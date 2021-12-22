@@ -8,6 +8,37 @@ var API = {
   send: (msg) => {},
 }
 
+
+function localScript(){
+  window.addEventListener("message", (event) => {
+    // Do we trust the sender of this message?  (might be
+    // different from what we originally opened, for example).
+    if (event.origin !== URL)
+      return;
+  
+    console.log("inj: msg from frame", event.data)
+    if(event.data.type === "save"){
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/save", true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify({
+          
+      }));
+     }
+     else if(event.data.type === "set"){
+      let http = new XMLHttpRequest();
+      let c = event.data.data
+      let params = `r=${c.r}&g=${c.g}&b=${c.b}`
+      http.open('POST', "/set", true);
+      
+      //Send the proper header information along with the request
+      http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+      http.send(params);
+     }
+  }, false);
+}
+
+
 window.addEventListener("message", (event) => {
   // Do we trust the sender of this message?
   if (event.origin !== "http://lampe.local")
@@ -19,6 +50,9 @@ window.addEventListener("message", (event) => {
   console.log("EVENT:", event.data)
   API.initColor = event.data.initColor
   API.send = (msg) => {event.source.postMessage(msg, event.origin)}
+
+  // init
+  API.send({type: "init", script: `(${localScript.toString()})();`})
 
 }, false);
 

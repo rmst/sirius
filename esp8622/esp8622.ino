@@ -63,17 +63,15 @@ body: {
 </style>
 <iframe id="frame" style="width:100%; height:100%;" frameBorder="0"></iframe>
 
-<script>
-//URL = "http://localhost:3000"
-//URL = "http://192.168.99.121:3000"
-URL = "http://rmst.local:3000"
+<script src="script"></script>
 
+<script>
 console.log("init")
 
 let frame = document.getElementById("frame")
 frame.src = URL
 frame.addEventListener( "load", () => {
-  frame.contentWindow.postMessage({initColor: "#556b2f"}, URL)
+  frame.contentWindow.postMessage({}, URL)
 })
 
 window.addEventListener("message", (event) => {
@@ -82,25 +80,14 @@ window.addEventListener("message", (event) => {
   if (event.origin !== URL)
     return;
 
-   console.log("msg from frame", event.data)
-   if(event.data.type === "save"){
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/save", true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify({
-        
-    }));
-   }
-   else if(event.data.type === "set"){
-    var http = new XMLHttpRequest();
-    c = event.data.data
-    var params = `r=${c.r}&g=${c.g}&b=${c.b}`
-    http.open('POST', "/set", true);
-    
-    //Send the proper header information along with the request
-    http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-    http.send(params);
-   }
+  // console.log("msg from frame", event.data)
+
+  if(event.data.type === "init"){
+    let script = document.createElement('script')
+    script.text = event.data.script
+    document.documentElement.appendChild(script)
+  }
+  
 }, false);
 
 </script>
@@ -120,6 +107,29 @@ void handleSet() {                          // If a POST request is made to URI 
   setColor(server.arg("r").toInt(), server.arg("g").toInt(), server.arg("b").toInt());
   server.send(200);
 }
+
+void handleRoot() {                         // When URI / is requested, send a web page with a button to toggle the LED
+  server.send(200, "text/html", INDEX_HTML);
+}
+
+
+const char SCRIPT_TEMPLATE[] = R"(
+  URL = `%s`
+)";
+
+void handleScript() {
+  char buffer[sizeof(SCRIPT_TEMPLATE) + 1024];
+
+  sprintf(buffer, SCRIPT_TEMPLATE, UI_URL);  // %d for decimal
+  
+  server.send(200, "text/javascript", buffer);
+}
+
+void handleNotFound(){
+  server.send(404, "text/plain", "404: Not found"); // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
+}
+
+
 
 
 //
@@ -160,6 +170,7 @@ void setup(void){
   }
 
   server.on("/", HTTP_GET, handleRoot);     // Call the 'handleRoot' function when a client requests URI "/"
+  server.on("/script", HTTP_GET, handleScript);
   server.on("/save", HTTP_POST, handleSave);  // Call the 'handleSave' function when a POST request is made to URI /save
   server.on("/set", HTTP_POST, handleSet);  // Call the 'handleSet' function when a POST request is made to URI "/set"
   server.onNotFound(handleNotFound);        // When a client requests an unknown URI (i.e. something other than "/"), call function "handleNotFound"
@@ -190,12 +201,4 @@ void setup(void){
 void loop(void){
   MDNS.update();
   server.handleClient();                    // Listen for HTTP requests from clients
-}
-
-void handleRoot() {                         // When URI / is requested, send a web page with a button to toggle the LED
-  server.send(200, "text/html", INDEX_HTML);
-}
-
-void handleNotFound(){
-  server.send(404, "text/plain", "404: Not found"); // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
 }
