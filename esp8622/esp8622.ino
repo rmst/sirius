@@ -36,8 +36,55 @@ void setColor(uint8_t r, uint8_t g, uint8_t b){
 
 
 
+//#define TEST
+#ifdef TEST
+
+void setToaster(){
+//  uint8_t* buf = pixels.getPixels();
+  for(int i=0; i<30; i++) {
+    // pixels.Color() takes RGB values, from 0,0,0 up to 255,255,255
+//    pixels.setPixelColor(i, pixels.Color(100, 0, 0));
+
+  }
+  pixels.fill(pixels.Color(40, 0, 0), 0, 30);
+  pixels.fill(pixels.Color(40, 0, 0), 60, 30);
+  pixels.fill(pixels.Color(40, 0, 0), 150, 30);
+  pixels.fill(pixels.Color(40, 0, 0), 270, 30);
+
+
+  pixels.show();
+//delay(DELAYVAL);
+}
+
+// TODO: this can be removed
+void setTest(){
+  int y = 0;
+  int j = 0;
+  while(true){
+    j += y;
+    if(j >= 30)
+      break;
+      
+    for(int i=0; i<5; i++) {
+      pixels.setPixelColor(j + i*60, pixels.Color(40, 0, 0));
+    }
+  
+    for(int i=0; i<5; i++) {
+      pixels.setPixelColor(60-1-j + i*60, pixels.Color(40, 0, 0));
+    }
+    y++;
+
+  }  
+  
+  pixels.show();
+}
+
+#endif
+
 
 // SERVER
+#include <EEPROM.h>
+
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WiFiMulti.h> 
@@ -142,7 +189,7 @@ void setup(void){
   // SERVER SETUP
   
   Serial.begin(115200);         // Start the Serial communication to send messages to the computer
-  delay(10);  // TODO: remove, why is this here?
+  delay(10);
   Serial.println('\n');
 
   pinMode(led, OUTPUT);
@@ -165,6 +212,7 @@ void setup(void){
 
   if (MDNS.begin("lampe")) {              // Start the mDNS responder for esp8266.local
     Serial.println("mDNS responder started");
+    MDNS.addService("http", "tcp", 80);  // Haven't really found this necessary yet
   } else {
     Serial.println("Error setting up MDNS responder!");
   }
@@ -189,6 +237,11 @@ void setup(void){
   pixels.clear();
 
   setColor(1, 1, 1);
+
+  #ifdef TEST
+//  setToaster();
+  setLadder();
+  #endif
   
 }
 
