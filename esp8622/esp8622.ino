@@ -117,43 +117,59 @@ void handleLED();
 void handleNotFound();
 
 const char INDEX_HTML[] = R"(
-<style>
-body: {
-  margin: 0;
-  padding: 0;
-}
-</style>
-<iframe id="frame" style="width:100%; height:100%;" frameBorder="0"></iframe>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
-<script src="script"></script>
+    <title>Sirius Lamp</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
 
-<script>
-console.log("init")
+    <iframe id="frame" style="width:100%; height:100%;" frameBorder="0"></iframe>
+    
+    <script src="script"></script>
+    
+    <script>
+      console.log("init")
+      
+      let frame = document.getElementById("frame")
+      frame.src = (window.location.hash === "#test") ? "http://rmst.local:3000" : URL
+      frame.addEventListener( "load", () => {
+        frame.contentWindow.postMessage({}, frame.src)
+      })
+      
+      window.addEventListener("message", (event) => {
+        // Do we trust the sender of this message?  (might be
+        // different from what we originally opened, for example).
+        
+        // console.log("Embedder received message from", event.origin)
 
-let frame = document.getElementById("frame")
-frame.src = URL
-frame.addEventListener( "load", () => {
-  frame.contentWindow.postMessage({}, URL)
-})
-
-window.addEventListener("message", (event) => {
-  // Do we trust the sender of this message?  (might be
-  // different from what we originally opened, for example).
-  console.log("ardu", event.origin)
-  if (event.origin !== "https://simonramstedt.com" && event.origin !== "http://rmst.local:3000")
-    return;
-
-  // console.log("msg from frame", event.data)
-
-  if(event.data.type === "init"){
-    let script = document.createElement('script')
-    script.text = event.data.script
-    document.documentElement.appendChild(script)
-  }
-  
-}, false);
-
-</script>
+        if (event.origin !== "https://simonramstedt.com" && event.origin !== "http://rmst.local:3000")
+          return;
+      
+        // console.log("msg from frame", event.data)
+      
+        if(event.data.type === "init"){
+          let script = document.createElement('script')
+          script.text = event.data.script
+          document.documentElement.appendChild(script)
+        }
+        
+      }, false);
+    
+    </script>
+  </body>
+</html>
 )";
 
 

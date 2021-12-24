@@ -59,9 +59,9 @@ function localScript(){
     // different from what we originally opened, for example).
     
     // console.log(event.origin)
-    
+
     // if (event.origin !== URL)
-    if(event.origin !== "https://simonramstedt.com" && event.origin !== "http://rmst.local:3000")
+    if(! ["https://simonramstedt.com", "http://rmst.local:3000"].includes(event.origin))
       return;
   
     // console.log("inj: msg from frame", event.data)
@@ -84,7 +84,9 @@ function localScript(){
 window.addEventListener("message", (event) => {
   // Do we trust the sender of this message?
 
-  if (event.origin !== "http://lampe.local" && event.origin !== "http://192.168.99.139")
+  // console.log("Embedded page received message from", event.origin)
+
+  if (! ["http://lampe.local", "http://192.168.99.139", "http://192.168.178.54"].includes(event.origin))
     return;
 
   // event.source is window.opener
