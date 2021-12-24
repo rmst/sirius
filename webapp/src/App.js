@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { HexColorPicker , HexColorInput} from "react-colorful";
-import { __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED } from "react-dom";
 import "./index.css";
 
 
