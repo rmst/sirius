@@ -14,6 +14,13 @@ function localScript(){
   window.pendingPostSet = null
   window.postSetRequest = null
 
+  console.log("CC", window.CURRENT_COLOR)
+  // get current color
+  let frame = document.getElementById("frame")
+  frame.contentWindow.postMessage({type: "color", rgb: window.CURRENT_COLOR}, frame.src)
+
+
+
   function maybeUpdate(){
     let pending = window.pendingPostSet
     let request = window.postSetRequest
@@ -89,15 +96,22 @@ window.addEventListener("message", (event) => {
   if (! ["http://lampe.local", "http://192.168.99.139", "http://192.168.178.54"].includes(event.origin))
     return;
 
-  // event.source is window.opener
-  // event.data is "hello there!"
-  
-  // console.log("EVENT:", event.data)
-  API.initColor = event.data.initColor
-  API.send = (msg) => {event.source.postMessage(msg, event.origin)}
 
-  // init
-  API.send({type: "init", script: `(${localScript.toString()})();`})
+  if (event.data.type === "color"){
+    // TODO: need to back transform from raw RGB !!
+    // window.CURRENT_COLOR_HEX = rgbToHex(...event.data.rgb)
+    window.CURRENT_COLOR_HEX = "#FFFFFF"
+  } else {
+    // event.source is window.opener
+    // event.data is "hello there!"
+    
+    // console.log("EVENT:", event.data)
+    API.initColor = event.data.initColor
+    API.send = (msg) => {event.source.postMessage(msg, event.origin)}
+
+    // init
+    API.send({type: "init", script: `(${localScript.toString()})();`})
+  }
 
 }, false);
 
@@ -105,6 +119,15 @@ window.addEventListener("message", (event) => {
 function hexToRgb(hex) {
   var [_, ...result] = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result ? result.map( x => parseInt(x, 16) ) : null;
+}
+
+function componentToHex(c) {
+  var hex = c.toString(16);
+  return hex.length == 1 ? "0" + hex : hex;
+}
+
+function rgbToHex(r, g, b) {
+  return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
 }
 
 function gammaCorrected(rgb, gamma=0.4){
@@ -129,7 +152,15 @@ function customCorrection(rgb){
 
 
 export default function App() {
-  const [color, setColor] = useState("#b32aa9");
+  const [color, setColor] = useState("#000000");
+
+  useEffect(() => {
+    // init
+    setTimeout(() => {
+      setColor(window.CURRENT_COLOR_HEX)
+    }, 200)
+  }, [])
+
 
   function colorChange(hex){
     setColor(hex)

@@ -7,5 +7,5 @@
 ```C
 #include <ESP8266WiFi.h>  // etc
 #include <Adafruit_NeoPixel.h>
-
+#include <ESP_EEPROM.h>
 ```
