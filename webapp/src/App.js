@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { HexColorPicker , HexColorInput} from "react-colorful";
+import { __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED } from "react-dom";
 import "./index.css";
 
 
@@ -10,42 +11,71 @@ var API = {
 
 
 function localScript(){
-  var pending = null
-  var request = null
+  window.pendingPostSet = null
+  window.postSetRequest = null
 
   function maybeUpdate(){
-    if(pending === null || (request !== null && request.readyState !== XMLHttpRequest.DONE))
+    let pending = window.pendingPostSet
+    let request = window.postSetRequest
+
+    if(pending === null)
       return
+      
+    if(request !== null){
+      if(Date.now() - request.timestamp > 500){
+        // console.log("abort previous post")
+        request.abort()
+        window.postSetRequest = null
+      } else if(request.readyState !== XMLHttpRequest.DONE){
+        return
+      }
+    }
 
     let c = pending
+
     request = new XMLHttpRequest();
     let params = `r=${c[0]}&g=${c[1]}&b=${c[2]}`
+
     request.open('POST', "/set", true);
     
     //Send the proper header information along with the request
     request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
     request.onreadystatechange = maybeUpdate
+    // request.timeout = 400  // ms
+    // request.ontimeout = () => {
+    //   request.abort()
+    //   request = null 
+    // }
     request.send(params);
-    pending = null
+
+    request.timestamp = Date.now()
+    window.postSetRequest = request
+    window.pendingPostSet = null
+
   }
 
   window.addEventListener("message", (event) => {
     // Do we trust the sender of this message?  (might be
     // different from what we originally opened, for example).
-    if (event.origin !== URL)
+    
+    // console.log(event.origin)
+    
+    // if (event.origin !== URL)
+    if(event.origin !== "https://simonramstedt.com" && event.origin !== "http://rmst.local:3000")
       return;
   
     // console.log("inj: msg from frame", event.data)
     if(event.data.type === "save"){
       var xhr = new XMLHttpRequest();
       xhr.open("POST", "/save", true);
+
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.send(JSON.stringify({
           
       }));
      }
      else if(event.data.type === "set"){
-      pending = event.data.data
+      window.pendingPostSet = event.data.data
       maybeUpdate()
      }
   }, false);
