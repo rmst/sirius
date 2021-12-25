@@ -206,6 +206,9 @@ void handleSave() {                          // If a POST request is made to URI
   EEPROM.put(1, (uint8_t) cg);
   EEPROM.put(2, (uint8_t) cb);
   EEPROM.commit();
+  pr = cr;
+  pg = cg;
+  pb = cb;
   server.send(200);
 }
 
@@ -224,12 +227,13 @@ void handleRoot() {                         // When URI / is requested, send a w
 const char SCRIPT_TEMPLATE[] = R"(
   URL = `%s`
   CURRENT_COLOR = [%d, %d, %d]
+  PERSISTENT_COLOR = [%d, %d, %d]
 )";
 
 void handleScript() {
   char buffer[sizeof(SCRIPT_TEMPLATE) + 1024];
 
-  sprintf(buffer, SCRIPT_TEMPLATE, UI_URL, cr, cg, cb);
+  sprintf(buffer, SCRIPT_TEMPLATE, UI_URL, cr, cg, cb, pr, pg, pb);
   
   server.send(200, "text/javascript", buffer);
 }
@@ -250,14 +254,48 @@ void handleNotFound(){
 
 void setup(void){
 
-
-  // SERVER SETUP
-  
   Serial.begin(115200);         // Start the Serial communication to send messages to the computer
   delay(10);
   Serial.println('\n');
 
-  pinMode(led, OUTPUT);
+
+
+  // PERSISTENCE
+  EEPROM.begin(16);
+  if(0) {
+    Serial.println("First start, welcome :)");
+
+    saveColor(1, 1, 1);
+  }
+
+  EEPROM.get(0, pr);
+  EEPROM.get(1, pg);
+  EEPROM.get(2, pb);
+
+  // NEOPIXEL SETUP
+  #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
+  clock_prescale_set(clock_div_1);
+  #endif
+  //    pixels.setBrightness(brightness);
+  pixels.begin();
+  pixels.clear();
+
+  setColor(pr, pg, pb);
+
+  #ifdef TEST
+//  setToaster();
+//  setLadder();
+  setFire();  
+  #endif
+  
+
+
+
+
+
+  // SERVER SETUP
+
+//  pinMode(led, OUTPUT);
 
   wifiMulti.addAP(WIFI0);   // add Wi-Fi networks you want to connect to
   wifiMulti.addAP(WIFI1);
@@ -291,36 +329,8 @@ void setup(void){
   server.begin();                           // Actually start the server
   Serial.println("HTTP server started");
 
-
-  // PERSISTENCE
-  EEPROM.begin(16);
-  if(0) {
-    Serial.println("First start, welcome :)");
-
-    saveColor(1, 1, 1);
-  }
-
-  EEPROM.get(0, pr);
-  EEPROM.get(1, pg);
-  EEPROM.get(2, pb);
-
-  // NEOPIXEL SETUP
-  #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
-  clock_prescale_set(clock_div_1);
-  #endif
-  //    pixels.setBrightness(brightness);
-  pixels.begin();
-  pixels.clear();
-
-  setColor(pr, pg, pb);
-
-  #ifdef TEST
-//  setToaster();
-//  setLadder();
-  setFire();  
-  #endif
-  
 }
+
 
 
 

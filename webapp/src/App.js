@@ -14,9 +14,10 @@ function localScript(){
   window.postSetRequest = null
 
   console.log("CC", window.CURRENT_COLOR)
+  console.log("PC", window.PERSISTENT_COLOR)
   // get current color
   let frame = document.getElementById("frame")
-  frame.contentWindow.postMessage({type: "color", rgb: window.CURRENT_COLOR}, frame.src)
+  frame.contentWindow.postMessage({type: "color", current: window.CURRENT_COLOR, persistent: window.PERSISTENT_COLOR}, frame.src)
 
 
 
@@ -87,33 +88,6 @@ function localScript(){
   }, false);
 }
 
-window.addEventListener("message", (event) => {
-  // Do we trust the sender of this message?
-
-  // console.log("Embedded page received message from", event.origin)
-
-  if (! ["http://lampe.local", "http://192.168.99.139", "http://192.168.178.54"].includes(event.origin))
-    return;
-
-
-  if (event.data.type === "color"){
-    // TODO: need to back transform from raw RGB !!
-    // window.CURRENT_COLOR_HEX = rgbToHex(...event.data.rgb)
-    window.CURRENT_COLOR_HEX = "#FFFFFF"
-  } else {
-    // event.source is window.opener
-    // event.data is "hello there!"
-    
-    // console.log("EVENT:", event.data)
-    API.initColor = event.data.initColor
-    API.send = (msg) => {event.source.postMessage(msg, event.origin)}
-
-    // init
-    API.send({type: "init", script: `(${localScript.toString()})();`})
-  }
-
-}, false);
-
 
 function hexToRgb(hex) {
   var [_, ...result] = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -131,11 +105,15 @@ function rgbToHex(r, g, b) {
 
 function gammaCorrected(rgb, gamma=0.4){
   // assumes values in [0, 1]
-  let correctionExponent = 1/gamma;
-  return rgb.map( x => Math.pow(( x), correctionExponent) )
+  return rgb.map( x => Math.pow(x, 1/gamma) )
 }
 
-function customCorrection(rgb){
+function gammaCorrectedInv(rgb, gamma=0.4){
+  // assumes values in [0, 1]
+  return rgb.map( x => Math.pow(x, gamma) )
+}
+
+function colorCorrect(rgb){
   rgb = rgb.map( x => x / 255 )
 
   rgb = gammaCorrected(rgb)
@@ -149,25 +127,76 @@ function customCorrection(rgb){
   return rgb.map( x => Math.floor(x * 255) )
 }
 
+function colorCorrectInv(rgb){
+  rgb = rgb.map( x => x / 255 )
+
+  rgb = [
+    rgb[0],
+    rgb[1] / 0.65,
+    rgb[2] / 0.65,
+  ]
+
+  rgb = gammaCorrectedInv(rgb)
+
+  return rgb.map( x => Math.floor(x * 255) )
+}
+
+
+function smartTextColor(color){
+  return hexToRgb(color).reduce((a, x)=>a+x) < 3*255*0.8 ? "white" : "gray"
+}
 
 export default function App() {
   const [color, setColor] = useState("#000000");
+  const [persistentColor, setPersistentColor] = useState("#000000");
 
   useEffect(() => {
-    // init
-    setTimeout(() => {
-      setColor(window.CURRENT_COLOR_HEX)
-    }, 200)
+    window.addEventListener("message", (event) => {
+      // Do we trust the sender of this message?
+    
+      // console.log("Embedded page received message from", event.origin)
+    
+      if (! ["http://lampe.local", "http://192.168.99.139", "http://192.168.178.54"].includes(event.origin))
+        return;
+    
+    
+      if (event.data.type === "color"){
+        // TODO: need to back transform from raw RGB !! 
+        setPersistentColor(rgbToHex(...colorCorrectInv(event.data.persistent)))
+        setColor(rgbToHex(...colorCorrectInv(event.data.current)))
+      } else {
+        // event.source is window.opener
+        // event.data is "hello there!"
+        
+        // console.log("EVENT:", event.data)
+        API.initColor = event.data.initColor
+        API.send = (msg) => {event.source.postMessage(msg, event.origin)}
+    
+        // init
+        API.send({type: "init", script: `(${localScript.toString()})();`})
+      }
+    
+    }, false);
   }, [])
 
 
   function colorChange(hex){
     setColor(hex)
 
-    var rgb = hexToRgb(hex)
-    rgb = customCorrection(rgb)
-    API.send({type: "set", data: rgb})
+    let rgb = hexToRgb(hex)
+    let rgbRaw = colorCorrect(rgb)
+    API.send({type: "set", data: rgbRaw})
   }
+
+  function save(){
+    setPersistentColor(color)
+    API.send({type: "save"})
+  }
+
+  function restore(){
+    colorChange(persistentColor)
+  }
+  
   return (
     <div className="App">
       <section className="colorpicker">
@@ -178,10 +207,11 @@ export default function App() {
         Current color is {color}
       </div> */}
 
-      <div className="buttons">
-      < HexColorInput color={color} onChange={colorChange} />
-
-        <button onClick={() => API.send({type: "save"})}>Save</button>
+      <div className="buttons" style={{visibility: color===persistentColor ? "hidden" : "visible"}}>
+      {/* < HexColorInput color={color} onChange={colorChange} /> */}
+        {/* <button style={{backgroundColor: color}}></button> */}
+        <div className="button" onClick={save}>Save <div style={{backgroundColor: color}}></div></div>
+        <div className="button" onClick={restore}>Restore <div style={{backgroundColor: persistentColor}}></div></div>
         {/* <button onClick={() => setColor("#556b2f")}>Choose green</button>
         <button onClick={() => setColor("#207bd7")}>Choose blue</button> */}
       </div>
